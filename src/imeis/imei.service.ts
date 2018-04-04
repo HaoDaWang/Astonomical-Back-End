@@ -2,6 +2,7 @@ import { Component } from "@nestjs/common";
 import { imeis } from "../entitys/imeis.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
+import { ClientDTO } from "../DTOs/client.dto";
 
 @Component()
 export class IMEIService{
@@ -26,7 +27,15 @@ export class IMEIService{
     }
 
     //增加imei
-    async add(imei:string):Promise<void>{
-        return await this.repository.insert({imei:imei});
+    async add(imei:string):Promise<ClientDTO>{
+        //检查是否有重复值
+        let result:Array<imeis> = await this.repository.query(`select * from imeis where imei='${imei}'`)
+        return new Promise<ClientDTO>( async (resolve, reject) => {
+            if(result.length == 0) {
+                await this.repository.insert({imei:imei});
+                resolve({success:true})
+            }
+            else resolve({err:true})
+        })
     }
 }

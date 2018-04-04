@@ -339,10 +339,10 @@ var AppRoutingModule = /** @class */ (function () {
     AppRoutingModule = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["J" /* NgModule */])({
             imports: [
-                __WEBPACK_IMPORTED_MODULE_1__angular_router__["c" /* RouterModule */].forRoot(routes)
+                __WEBPACK_IMPORTED_MODULE_1__angular_router__["d" /* RouterModule */].forRoot(routes)
             ],
             exports: [
-                __WEBPACK_IMPORTED_MODULE_1__angular_router__["c" /* RouterModule */]
+                __WEBPACK_IMPORTED_MODULE_1__angular_router__["d" /* RouterModule */]
             ]
         })
     ], AppRoutingModule);
@@ -565,10 +565,17 @@ var CurdTemplateComponent = /** @class */ (function () {
     };
     //提交表单
     CurdTemplateComponent.prototype.submit = function () {
+        var _this = this;
         this.httpClient[this.method]("http://" + this.config.HOST + ":" + this.config.PORT + this.path, { imei: this.value1, newIMEI: this.value2 })
-            .subscribe(function () {
-            alert('操作成功');
-            // this.router.navigate(['/pane/imei/all'],{relativeTo:this.activatedRoute})
+            .subscribe(function (data) {
+            console.log(data);
+            if (data.err) {
+                alert("请勿提交重复的imei");
+                return;
+            }
+            else
+                alert('操作成功');
+            _this.router.navigate(['/pane/imei/all'], { relativeTo: _this.activatedRoute });
         });
     };
     __decorate([
@@ -608,7 +615,7 @@ var CurdTemplateComponent = /** @class */ (function () {
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_1__angular_common_http__["a" /* HttpClient */],
             __WEBPACK_IMPORTED_MODULE_2__services_config_service__["a" /* AppConfig */],
             __WEBPACK_IMPORTED_MODULE_3__angular_forms__["a" /* FormBuilder */],
-            __WEBPACK_IMPORTED_MODULE_4__angular_router__["b" /* Router */],
+            __WEBPACK_IMPORTED_MODULE_4__angular_router__["c" /* Router */],
             __WEBPACK_IMPORTED_MODULE_4__angular_router__["a" /* ActivatedRoute */]])
     ], CurdTemplateComponent);
     return CurdTemplateComponent;
@@ -716,7 +723,7 @@ module.exports = ".users{\n    margin-top: 10px;\n}"
 /***/ "./src/app/imei-all/imei-all.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<nz-input \n    [nzType]=\"'search'\" \n    [(ngModel)]=\"searchValue\"\n    (nzOnSearch)=\"search()\"\n    [nzPlaceHolder]=\"'搜索IMEI'\"\n></nz-input>\n<div class=\"users\">\n    <nz-table #nzTbale [nzDataSource]=\"data\" [nzPageSize]=\"10\" nzBordered [nzLoading]=\"isLoading\">\n        <thead nz-thead>\n            <tr>   \n                <!-- id -->\n                <th nz-th><span>id</span></th>\n                <!-- imei -->\n                <th nz-th><span>IMEI</span></th>\n            </tr>\n        </thead>\n        <tbody nz-tbody>\n            <tr nz-tbody-tr *ngFor=\"let item of data | IMEIPipe:searchValue\">\n                <td nz-td>{{data.indexOf(item) + 1 || null}}</td>\n                <td nz-td>{{item.imei || null}}</td>\n            </tr>\n        </tbody>\n    </nz-table>\n</div>"
+module.exports = "<nz-input \n    [nzType]=\"'search'\" \n    [(ngModel)]=\"searchValue\"\n    (nzOnSearch)=\"search()\"\n    [nzPlaceHolder]=\"'搜索IMEI'\"\n></nz-input>\n<div class=\"users\">\n    <nz-table #nzTable [nzDataSource]=\"data\" [nzPageSize]=\"10\" nzBordered [nzLoading]=\"isLoading\">\n        <thead nz-thead>\n            <tr>   \n                <!-- id -->\n                <th nz-th><span>id</span></th>\n                <!-- imei -->\n                <th nz-th><span>IMEI</span></th>\n                <!-- operation -->\n                <th nz-th>\n                    操作\n                </th>\n            </tr>\n        </thead>\n        <tbody nz-tbody>\n            <tr nz-tbody-tr *ngFor=\"let item of nzTable.data | IMEIPipe:searchValue\">\n                <td #id nz-td>{{data.indexOf(item) + 1 || null}}</td>\n                <td #imei nz-td>{{item.imei || null}}</td>\n                <td nz-td>\n                    <a (click)=\"update(imei.innerText,id.innerText)\">修改</a>\n                    <span nz-table-divider></span>\n                    <a (click)=\"delete(imei.innerText,id.innerText)\">删除</a>\n                </td>\n            </tr>\n        </tbody>\n    </nz-table>\n</div>\n\n<!-- modal -->\n<nz-modal\n    [nzVisible]=\"isVisible\" \n    [nzTitle]=\"modalTitle\" \n    (nzOnCancel)=\"handleCancel()\" \n    (nzOnOk)=\"handleOk()\"\n    [nzContent]=\"modalContent\"\n    [nzOkText]=\"okText\"\n    >\n    <ng-template #modalContent>\n        <div *ngIf=\"!isViewDelete\" nz-form-item>\n            <nz-input [(ngModel)]=\"targetIMEI\" [nzPlaceHolder]=\"'imei号'\"></nz-input>\n        </div>\n        <p *ngIf=\"isViewDelete\"><span>是否删除这条imei？</span></p>\n    </ng-template>\n</nz-modal>"
 
 /***/ }),
 
@@ -750,6 +757,16 @@ var ImeiAllComponent = /** @class */ (function () {
         this.data = [
             { id: 0, imei: "null" }
         ];
+        //modal 是否显示
+        this.isVisible = false;
+        //ok按钮点击
+        this.okText = "确认";
+        //当前选中项目
+        this.targetItem = { imei: "", id: 0 };
+        //是否显示删除项目
+        this.isViewDelete = false;
+        //输入框历史内容
+        this.historyIMEI = '';
     }
     //搜索回调
     ImeiAllComponent.prototype.search = function () {
@@ -764,6 +781,67 @@ var ImeiAllComponent = /** @class */ (function () {
             _this.data = data;
             _this.isLoading = false;
         });
+    };
+    ImeiAllComponent.prototype.closeModal = function () {
+        this.isVisible = false;
+        this.targetIMEI = "";
+    };
+    ImeiAllComponent.prototype.setTargetItem = function (value, id) {
+        this.targetItem.imei = value;
+        this.targetItem.id = id;
+    };
+    //更新imei
+    ImeiAllComponent.prototype.update = function (value, id) {
+        if (id == 'null')
+            alert('该项目无效');
+        this.setTargetItem(value, id);
+        this.isViewDelete = false;
+        this.targetIMEI = this.targetItem.imei;
+        this.historyIMEI = this.targetIMEI;
+        //修改imei        
+        this.okText = "确认修改";
+        this.modalTitle = "修改IMEI";
+        this.isVisible = true;
+    };
+    //删除imei
+    ImeiAllComponent.prototype.delete = function (value, id) {
+        if (id == 'null')
+            alert('该项目无效');
+        this.setTargetItem(value, id);
+        this.isViewDelete = true;
+        this.okText = "确认删除";
+        this.modalTitle = "删除IMEI";
+        this.isVisible = true;
+    };
+    //确认按钮
+    ImeiAllComponent.prototype.handleOk = function () {
+        var _this = this;
+        if (this.historyIMEI == this.targetIMEI) {
+            alert('请提交新的IMEI');
+            return;
+        }
+        var path;
+        var method;
+        //更新
+        if (this.modalTitle == '修改IMEI') {
+            path = "/imei/update";
+            method = 'put';
+        }
+        else {
+            path = "/imei/remove/" + this.targetItem.imei;
+            method = 'delete';
+        }
+        this.httpClient[method]("http://" + this.config.HOST + ":" + this.config.PORT + path, { imei: this.targetItem.imei, newIMEI: this.targetIMEI })
+            .subscribe(function () {
+            alert('操作成功');
+            //更新数据
+            _this.ngOnInit();
+        });
+        this.closeModal();
+    };
+    //取消按钮
+    ImeiAllComponent.prototype.handleCancel = function (e) {
+        this.closeModal();
     };
     ImeiAllComponent = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["n" /* Component */])({
@@ -960,6 +1038,7 @@ module.exports = "<form nz-form [formGroup]=\"login\" id=\"form\" (ngSubmit)=\"s
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__angular_common_http__ = __webpack_require__("./node_modules/_@angular_common@5.2.9@@angular/common/esm5/http.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__angular_router__ = __webpack_require__("./node_modules/_@angular_router@5.2.9@@angular/router/esm5/router.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__services_user_service__ = __webpack_require__("./src/services/user.service.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_6__services_config_service__ = __webpack_require__("./src/services/config.service.ts");
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -975,13 +1054,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 
 
 
+
 var MainComponent = /** @class */ (function () {
-    function MainComponent(localStorage, formBuilder, httpClient, router, user) {
+    function MainComponent(localStorage, formBuilder, httpClient, router, user, config) {
         this.localStorage = localStorage;
         this.formBuilder = formBuilder;
         this.httpClient = httpClient;
         this.router = router;
         this.user = user;
+        this.config = config;
         //选择框数组
         this.checkboxArray = [
             { label: "记住账号", value: 'username' },
@@ -1043,7 +1124,7 @@ var MainComponent = /** @class */ (function () {
         var _this = this;
         this.isLoading = true;
         //验证表单
-        this.httpClient.post('http://localhost:3000/user/validate', { username: this.username, password: this.password })
+        this.httpClient.post("http://" + this.config.HOST + ":" + this.config.PORT + "/user/validate", { username: this.username, password: this.password })
             .subscribe(function (data) {
             console.log(data);
             if (data.err) {
@@ -1076,8 +1157,9 @@ var MainComponent = /** @class */ (function () {
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_2__services_local_storage_service__["a" /* LocalStorage */],
             __WEBPACK_IMPORTED_MODULE_1__angular_forms__["a" /* FormBuilder */],
             __WEBPACK_IMPORTED_MODULE_3__angular_common_http__["a" /* HttpClient */],
-            __WEBPACK_IMPORTED_MODULE_4__angular_router__["b" /* Router */],
-            __WEBPACK_IMPORTED_MODULE_5__services_user_service__["a" /* User */]])
+            __WEBPACK_IMPORTED_MODULE_4__angular_router__["c" /* Router */],
+            __WEBPACK_IMPORTED_MODULE_5__services_user_service__["a" /* User */],
+            __WEBPACK_IMPORTED_MODULE_6__services_config_service__["a" /* AppConfig */]])
     ], MainComponent);
     return MainComponent;
 }());
@@ -1096,7 +1178,7 @@ module.exports = ":host{\n    width: 100%;\n    height: 100%;\n}\n\n.full{\n    
 /***/ "./src/app/pane/pane.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<nz-layout class=\"full\">\n    <!-- 侧边栏 -->\n    <nz-sider class=\"sider\" nzCollapsible [(nzCollapsed)]=\"isCollapsed\">\n        <div class=\"logo\">\n\n        </div>\n        <ul nz-menu [nzTheme]=\"'dark'\" [nzMode]=\"isCollapsed?'vertical':'inline'\">\n            <!-- user菜单 -->\n            <li nz-submenu [nzOpen]=\"true\">\n                <span title><i class=\"anticon anticon-user\"></i><span>用户</span></span>\n                <ul>\n                    <!-- 查看所有管理员用户 -->\n                    <li nz-menu-item [nzSelected]=\"true\" [routerLink]=\"['./user/all']\">查看管理员信息</li>\n                    <!-- 修改管理员密码 -->\n                    <li nz-menu-item [routerLink]=\"['./user/update']\">修改密码</li>\n                </ul>\n            </li>\n            <li nz-submenu>\n                <span title><i class=\"anticon anticon-cloud\"></i><span>IMEI</span></span>\n                <ul>\n                    <li nz-menu-item [routerLink]=\"['./imei/all']\">查看所有IMEI</li>\n                    <li nz-menu-item [routerLink]=\"['./imei/add']\">增加IMEI</li>\n                    <li nz-menu-item [routerLink]=\"['./imei/remove']\">删除IMEI</li>\n                    <li nz-menu-item [routerLink]=\"['./imei/update']\">修改IMEI</li>\n                </ul>\n            </li>\n        </ul>\n    </nz-sider>\n    <nz-layout class=\"full\">\n        <!-- \b\b顶部栏 -->\n        <nz-header>\n            <p class=\"headText\">欢迎您 , {{user.username}}</p>\n        </nz-header>\n        <!-- 内容 -->\n        <nz-content class=\"content\">\n            <router-outlet></router-outlet>\n        </nz-content>\n        <!-- 底部栏 -->\n        <nz-footer class=\"footer\">\n    \n        </nz-footer>\n    </nz-layout>\n</nz-layout>\n"
+module.exports = "<nz-layout class=\"full\">\n    <!-- 侧边栏 -->\n    <nz-sider class=\"sider\" nzCollapsible [(nzCollapsed)]=\"isCollapsed\">\n        <div class=\"logo\">\n\n        </div>\n        <ul nz-menu [nzTheme]=\"'dark'\" [nzMode]=\"isCollapsed?'vertical':'inline'\">\n            <!-- user菜单 -->\n            <li nz-submenu [nzOpen]=\"true\">\n                <span title><i class=\"anticon anticon-user\"></i><span>用户</span></span>\n                <ul>\n                    <!-- 查看所有管理员用户 -->\n                    <li nz-menu-item [nzSelected]=\"true\" [routerLink]=\"['./user/all']\">查看管理员信息</li>\n                    <!-- 修改管理员密码 -->\n                    <li nz-menu-item [routerLink]=\"['./user/update']\">修改密码</li>\n                </ul>\n            </li>\n            <li nz-submenu>\n                <span title><i class=\"anticon anticon-cloud\"></i><span>IMEI</span></span>\n                <ul>\n                    <div #all>\n                        <li nz-menu-item [routerLink]=\"['./imei/all']\">查看所有IMEI</li>\n                    </div>\n                    <div #add>\n                        <li nz-menu-item [routerLink]=\"['./imei/add']\">增加IMEI</li>\n                    </div>\n                    <!-- <li nz-menu-item [routerLink]=\"['./imei/remove']\">删除IMEI</li> -->\n                    <!-- <li nz-menu-item [routerLink]=\"['./imei/update']\">修改IMEI</li> -->\n                </ul>\n            </li>\n        </ul>\n    </nz-sider>\n    <nz-layout class=\"full\">\n        <!-- \b\b顶部栏 -->\n        <nz-header>\n            <p class=\"headText\">欢迎您 , {{user.username}}</p>\n        </nz-header>\n        <!-- 内容 -->\n        <nz-content class=\"content\">\n            <router-outlet></router-outlet>\n        </nz-content>\n        <!-- 底部栏 -->\n        <nz-footer class=\"footer\">\n    \n        </nz-footer>\n    </nz-layout>\n</nz-layout>\n"
 
 /***/ }),
 
@@ -1108,6 +1190,7 @@ module.exports = "<nz-layout class=\"full\">\n    <!-- 侧边栏 -->\n    <nz-si
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("./node_modules/_@angular_core@5.2.9@@angular/core/esm5/core.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__services_user_service__ = __webpack_require__("./src/services/user.service.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_router__ = __webpack_require__("./node_modules/_@angular_router@5.2.9@@angular/router/esm5/router.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__services_config_service__ = __webpack_require__("./src/services/config.service.ts");
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -1120,23 +1203,64 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 
 
 
+
 var PaneComponent = /** @class */ (function () {
-    function PaneComponent(user, router, renderer, routerInfo) {
+    function PaneComponent(user, router, renderer, routerInfo, config, ref) {
         this.user = user;
         this.router = router;
         this.renderer = renderer;
         this.routerInfo = routerInfo;
+        this.config = config;
+        this.ref = ref;
+        this.selectedColor = "#108ee9";
+        this.normalColor = "transparent";
+        this.normalFontColor = "rgba(255, 255, 255, 0.67)";
+        this.selectedFontColor = "#fff";
         //初始是否伸缩sider
         this.isCollapsed = false;
     }
+    PaneComponent.prototype.changeSelected = function (ele) {
+        ele.style.background = this.selectedColor;
+        ele.style.color = this.selectedFontColor;
+    };
+    PaneComponent.prototype.changeNormal = function (ele) {
+        ele.style.background = this.normalColor;
+        ele.style.color = this.normalFontColor;
+    };
     PaneComponent.prototype.ngAfterViewInit = function () {
         this.router.navigate(['user/all'], { relativeTo: this.routerInfo });
     };
     PaneComponent.prototype.ngOnInit = function () {
-        // this.routerInfo.url.subscribe((data:Array<UrlSegment>) => {
-        //     if(data[0].path == '')
-        // })
+        var _this = this;
+        this.router.events
+            .subscribe(function (event) {
+            if (event instanceof __WEBPACK_IMPORTED_MODULE_2__angular_router__["b" /* NavigationEnd */]) {
+                var all = _this.all.nativeElement.firstElementChild;
+                var add = _this.add.nativeElement.firstElementChild;
+                if (event.url == '/pane/imei/all') {
+                    //更改颜色
+                    _this.changeSelected(all);
+                    _this.changeNormal(add);
+                }
+                else if (event.url == '/pane/imei/add') {
+                    _this.changeSelected(add);
+                    _this.changeNormal(all);
+                }
+                else {
+                    _this.changeNormal(all);
+                    _this.changeNormal(add);
+                }
+            }
+        });
     };
+    __decorate([
+        Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["_11" /* ViewChild */])("all"),
+        __metadata("design:type", __WEBPACK_IMPORTED_MODULE_0__angular_core__["u" /* ElementRef */])
+    ], PaneComponent.prototype, "all", void 0);
+    __decorate([
+        Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["_11" /* ViewChild */])("add"),
+        __metadata("design:type", __WEBPACK_IMPORTED_MODULE_0__angular_core__["u" /* ElementRef */])
+    ], PaneComponent.prototype, "add", void 0);
     PaneComponent = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["n" /* Component */])({
             selector: 'app-pane',
@@ -1144,9 +1268,11 @@ var PaneComponent = /** @class */ (function () {
             styles: [__webpack_require__("./src/app/pane/pane.component.css")]
         }),
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_1__services_user_service__["a" /* User */],
-            __WEBPACK_IMPORTED_MODULE_2__angular_router__["b" /* Router */],
-            __WEBPACK_IMPORTED_MODULE_0__angular_core__["W" /* Renderer */],
-            __WEBPACK_IMPORTED_MODULE_2__angular_router__["a" /* ActivatedRoute */]])
+            __WEBPACK_IMPORTED_MODULE_2__angular_router__["c" /* Router */],
+            __WEBPACK_IMPORTED_MODULE_0__angular_core__["X" /* Renderer2 */],
+            __WEBPACK_IMPORTED_MODULE_2__angular_router__["a" /* ActivatedRoute */],
+            __WEBPACK_IMPORTED_MODULE_3__services_config_service__["a" /* AppConfig */],
+            __WEBPACK_IMPORTED_MODULE_0__angular_core__["k" /* ChangeDetectorRef */]])
     ], PaneComponent);
     return PaneComponent;
 }());
@@ -1242,7 +1368,7 @@ var UpdatePasswordComponent = /** @class */ (function () {
             __WEBPACK_IMPORTED_MODULE_2__angular_common_http__["a" /* HttpClient */],
             __WEBPACK_IMPORTED_MODULE_3__services_config_service__["a" /* AppConfig */],
             __WEBPACK_IMPORTED_MODULE_4__services_user_service__["a" /* User */],
-            __WEBPACK_IMPORTED_MODULE_5__angular_router__["b" /* Router */]])
+            __WEBPACK_IMPORTED_MODULE_5__angular_router__["c" /* Router */]])
     ], UpdatePasswordComponent);
     return UpdatePasswordComponent;
 }());
@@ -1261,7 +1387,7 @@ module.exports = ":host{\n    background: #fff;\n}"
 /***/ "./src/app/user-all/user-all.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<nz-table class=\"users\" #nzTbale [nzDataSource]=\"data\" [nzPageSize]=\"10\" nzBordered [nzLoading]=\"isLoading\">\n    <thead nz-thead>\n        <tr>   \n            <!-- id -->\n            <th nz-th><span>账户</span></th>\n            <!-- imei -->\n            <th nz-th><span>密码</span></th>\n        </tr>\n    </thead>\n    <tbody nz-tbody>\n        <tr nz-tbody-tr *ngFor=\"let item of data\">\n            <td nz-td>{{item.username}}</td>\n            <td nz-td>{{item.password}}</td>\n        </tr>\n    </tbody>\n</nz-table>"
+module.exports = "<nz-table class=\"users\" #nzTable [nzDataSource]=\"data\" [nzPageSize]=\"10\" nzBordered [nzLoading]=\"isLoading\" nzShowSizeChanger>\n    <thead nz-thead>\n        <tr>   \n            <!-- id -->\n            <th nz-th><span>账户</span></th>\n            <!-- imei -->\n            <th nz-th><span>密码</span></th>\n        </tr>\n    </thead>\n    <tbody nz-tbody>\n        <tr nz-tbody-tr *ngFor=\"let item of nzTable.data\">\n            <td nz-td>{{item.username}}</td>\n            <td nz-td>{{item.password}}</td>\n        </tr>\n    </tbody>\n</nz-table>"
 
 /***/ }),
 
@@ -1419,8 +1545,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
  */
 var AppConfig = /** @class */ (function () {
     function AppConfig() {
-        this.HOST = "localhost";
-        this.PORT = '3000';
+        this.HOST = "47.106.73.193";
+        this.PORT = '80';
+        // public HOST:string = "localhost";
+        // public PORT:string = "3000";
+        this.allSelected = false;
+        this.addSelected = false;
     }
     AppConfig = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["B" /* Injectable */])()
@@ -1511,7 +1641,7 @@ var PaneGuard = /** @class */ (function () {
     PaneGuard = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["B" /* Injectable */])(),
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_2__user_service__["a" /* User */],
-            __WEBPACK_IMPORTED_MODULE_1__angular_router__["b" /* Router */]])
+            __WEBPACK_IMPORTED_MODULE_1__angular_router__["c" /* Router */]])
     ], PaneGuard);
     return PaneGuard;
 }());

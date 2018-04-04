@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Users } from "../entitys/users.entity";
 import { Repository } from "typeorm";
 import { ClientDTO } from "../DTOs/client.dto";
+import { resolve } from "url";
 
 @Component()
 export class UserService{
@@ -24,7 +25,15 @@ export class UserService{
     }
 
     //验证账号密码
-    async validate(username?:string, password?:string):Promise<Users | undefined>{
-        return await this.repository.findOneById(username);
+    async validate(username?:string, password?:string):Promise<ClientDTO>{
+        let user:Users | undefined = await this.repository.findOneById(username);
+        return new Promise<ClientDTO>((resolve, reject) => {
+            if(user && username == user.username && password == user.password){
+                resolve({success:true})
+            }
+            else {
+                resolve({err:true});
+            }
+        })
     }
 }

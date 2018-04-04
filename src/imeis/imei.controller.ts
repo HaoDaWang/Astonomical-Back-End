@@ -2,6 +2,7 @@ import { Controller, Get, Delete, Param, Put, Post, Body } from "@nestjs/common"
 import { IMEIService } from "./imei.service";
 import { imeis } from "../entitys/imeis.entity";
 import { IMEIModel } from "./imei.interface";
+import { ClientDTO } from "../DTOs/client.dto";
 
 @Controller("imei")
 export class IMEIController{
@@ -29,7 +30,7 @@ export class IMEIController{
 
     //增加imei
     @Post('add/:imei')
-    add(@Param() param:IMEIModel):Promise<void>{
+    add(@Param() param:IMEIModel):Promise<ClientDTO>{
         return this.imeiService.add(param.imei);
     }
 }

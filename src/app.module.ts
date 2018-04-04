@@ -32,10 +32,10 @@ import { StaticMiddleware } from "./middlewares/static.middleware";
 export class AppModule implements NestModule {
     configure(consumer: MiddlewaresConsumer): void | MiddlewaresConsumer {
         consumer
-            // .apply(CORSMiddleware)
-            // .forRoutes(
-                // {path:"*",method:RequestMethod.ALL}
-            // )
+            .apply(CORSMiddleware)
+            .forRoutes(
+                {path:"*",method:RequestMethod.ALL}
+            )
             .apply(StaticMiddleware)
             .forRoutes(
                 {path:"*",method:RequestMethod.ALL}

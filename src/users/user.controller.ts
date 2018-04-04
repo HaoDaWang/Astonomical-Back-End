@@ -2,6 +2,7 @@ import { Controller, Get, Put, Body, Post } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { Users } from "../entitys/users.entity";
 import { UserModel } from "./user.interface";
+import { ClientDTO } from "../DTOs/client.dto";
 
 @Controller('user')
 export class UserController{
@@ -24,7 +25,7 @@ export class UserController{
 
     //验证账号密码
     @Post('validate')
-    validate(@Body() body:UserModel):Promise<Users | undefined>{
+    validate(@Body() body:UserModel):Promise<ClientDTO>{
         return this.userService.validate(body.username, body.password);
     }
 }
